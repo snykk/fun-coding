@@ -2,7 +2,7 @@ use crossterm::{
     cursor,
     event::{self, KeyCode, KeyEvent},
     execute, queue,
-    style::{self, Color, Print, SetBackgroundColor},
+    style::{Color, Print, SetBackgroundColor},
     terminal::{self, Clear, ClearType},
 };
 use rand::Rng;
@@ -106,10 +106,18 @@ impl Game {
     fn draw(&self) {
         let mut stdout = io::stdout();
         queue!(stdout, cursor::MoveTo(0, 0), Clear(ClearType::All)).unwrap();
-        
-        // Draw board
-        for (y, row) in self.board.iter().enumerate() {
-            for (x, &block) in row.iter().enumerate() {
+    
+        // Draw top border
+        queue!(stdout, Print("╔")).unwrap();
+        for _ in 0..WIDTH {
+            queue!(stdout, Print("══")).unwrap();
+        }
+        queue!(stdout, Print("╗\n")).unwrap();
+    
+        // Draw board with left and right borders
+        for row in self.board.iter() {
+            queue!(stdout, Print("║")).unwrap(); // Left border
+            for &block in row.iter() {
                 match block {
                     Block::Empty => queue!(stdout, Print("  ")).unwrap(),
                     Block::Filled(color) => {
@@ -123,17 +131,24 @@ impl Game {
                     }
                 }
             }
-            queue!(stdout, Print("\n")).unwrap();
+            queue!(stdout, Print("║\n")).unwrap(); // Right border
         }
-
-        // Draw current piece
+    
+        // Draw bottom border
+        queue!(stdout, Print("╚")).unwrap();
+        for _ in 0..WIDTH {
+            queue!(stdout, Print("══")).unwrap();
+        }
+        queue!(stdout, Print("╝\n")).unwrap();
+    
+        // Draw current piece without adjusting `x` for the left border or `y` for the top border
         for (dx, dy) in self.current_piece.blocks() {
             let x = (self.current_piece.x + dx) as usize;
             let y = (self.current_piece.y + dy) as usize;
             if y < HEIGHT && x < WIDTH {
                 queue!(
                     stdout,
-                    cursor::MoveTo((x * 2) as u16, y as u16),
+                    cursor::MoveTo((x * 2 + 1) as u16, (y + 1) as u16), // Adjust x for alignment within the border
                     SetBackgroundColor(Color::Blue),
                     Print("  "),
                     SetBackgroundColor(Color::Reset)
@@ -141,9 +156,10 @@ impl Game {
                 .unwrap();
             }
         }
-        
+    
         stdout.flush().unwrap();
     }
+    
 
     fn game_loop(&mut self) {
         let mut last_update = std::time::Instant::now();
